@@ -550,8 +550,6 @@ export default function DualLanguageExport({
           cleanedData2={previewModal.cleanedData2}
           format={selectedFormat}
           isDownloading={isProcessing}
-          projectId={projectId}
-          projectName={projectName}
         />
       )}
     </div>
