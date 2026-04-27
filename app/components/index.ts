@@ -1,5 +1,6 @@
 export { default as Navbar } from './Navbar';
 export { default as LandingNavbar } from './LandingNavbar';
+export { default as MaverickLogo } from './MaverickLogo';
 export { default as ProjectCard } from './ProjectCard';
 export { default as Button } from './Button';
 export { default as CartoonBackground } from './CartoonBackground';

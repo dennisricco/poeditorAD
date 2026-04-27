@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import MaverickLogo from './MaverickLogo';
 
 export default function LandingNavbar() {
   return (
@@ -8,13 +9,8 @@ export default function LandingNavbar() {
       <div className="bg-white border-4 border-poe-black rounded-3xl cartoon-shadow px-5 py-3 sm:px-8 sm:py-4">
         <div className="flex items-center justify-between">
           {/* Logo Section */}
-          <Link href="/" className="flex items-center gap-3 sm:gap-4 hover:opacity-90 transition-opacity">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 bg-poe-yellow border-4 border-poe-black rounded-2xl flex items-center justify-center font-black text-xl sm:text-2xl rotate-3 shrink-0">
-              P
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black italic tracking-tight whitespace-nowrap">
-              POE<span className="text-poe-blue">3D</span>
-            </h1>
+          <Link href="/" className="hover:opacity-90 transition-opacity">
+            <MaverickLogo size="md" showText={true} />
           </Link>
 
           {/* Auth Buttons */}
