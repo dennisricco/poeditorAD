@@ -1,26 +1,227 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --poe-yellow: #FFDE59;
+  --poe-blue: #5271FF;
+  --poe-pink: #FF914D;
+  --poe-green: #00BF63;
+  --poe-bg: #F0F2F5;
+  --poe-black: #000000;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-poe-yellow: var(--poe-yellow);
+  --color-poe-blue: var(--poe-blue);
+  --color-poe-pink: var(--poe-pink);
+  --color-poe-green: var(--poe-green);
+  --color-poe-bg: var(--poe-bg);
+  --color-poe-black: var(--poe-black);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Remove aggressive reset - let Tailwind handle spacing */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--poe-bg);
+  color: var(--poe-black);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Cartoon Shadow Utilities */
+.cartoon-shadow {
+  box-shadow: 5px 5px 0px 0px #000000;
+}
+
+.cartoon-shadow-sm {
+  box-shadow: 3px 3px 0px 0px #000000;
+}
+
+.cartoon-shadow-lg {
+  box-shadow: 8px 8px 0px 0px #000000;
+}
+
+/* Button Press Animation */
+.btn-press:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+/* Smooth Transitions */
+.transition-cartoon {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Prevent layout shift */
+img, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Z-index hierarchy */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Note: Modal z-index (9999) is set via inline style in components */
+/* Note: Navbar z-index (50) is controlled via Tailwind classes in component */
+
+/* Smooth page transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Modal fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Floating animation for hero elements */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(12deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(12deg);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(-12deg);
+  }
+  50% {
+    transform: translateY(-30px) translateX(10px) rotate(-12deg);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 5s ease-in-out infinite;
+}
+
+@keyframes float-slower {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(6deg);
+  }
+  50% {
+    transform: translateY(-15px) translateX(-10px) rotate(6deg);
+  }
+}
+
+.animate-float-slower {
+  animation: float-slower 7s ease-in-out infinite;
+}
+
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-25px);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 4s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+@keyframes rotate-cube {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(12deg);
+  }
+  50% {
+    transform: rotateX(180deg) rotateY(180deg) rotateZ(12deg);
+  }
+  100% {
+    transform: rotateX(360deg) rotateY(360deg) rotateZ(12deg);
+  }
+}
+
+.rotate-cube {
+  animation: rotate-cube 15s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+@keyframes rotate-cube-reverse {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(-12deg);
+  }
+  50% {
+    transform: rotateX(-180deg) rotateY(-180deg) rotateZ(-12deg);
+  }
+  100% {
+    transform: rotateX(-360deg) rotateY(-360deg) rotateZ(-12deg);
+  }
+}
+
+.rotate-cube-reverse {
+  animation: rotate-cube-reverse 18s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+.transform-3d {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* Animation delays */
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+.delay-700 {
+  animation-delay: 700ms;
+}
+
+.delay-1000 {
+  animation-delay: 1000ms;
 }

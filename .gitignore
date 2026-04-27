@@ -1,6 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ============================================
+# DEPENDENCIES
+# ============================================
 /node_modules
 /.pnp
 .pnp.*
@@ -9,33 +11,242 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
-# testing
+# ============================================
+# TESTING
+# ============================================
 /coverage
+*.lcov
+.nyc_output
+/test-results/
+/playwright-report/
+/playwright/.cache/
 
-# next.js
+# ============================================
+# NEXT.JS
+# ============================================
 /.next/
 /out/
+.next
+out
 
-# production
+# ============================================
+# PRODUCTION
+# ============================================
 /build
+/dist
+*.js.map
 
-# misc
-.DS_Store
+# ============================================
+# ENVIRONMENT VARIABLES (CRITICAL - NEVER COMMIT!)
+# ============================================
+# Local environment files
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+
+# Backup environment files
+.env.backup
+.env.*.backup
+*.env.backup
+
+# ============================================
+# SECRETS & CREDENTIALS (CRITICAL!)
+# ============================================
+# API Keys
+**/api-keys.json
+**/secrets.json
+**/credentials.json
+
+# Certificates & Keys
 *.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
 
-# debug
+# Database credentials
+database.json
+db-config.json
+
+# Supabase local config (if any)
+supabase/.env
+supabase/.env.local
+
+# ============================================
+# LOGS
+# ============================================
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ============================================
+# OPERATING SYSTEM
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
 
-# vercel
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# IDEs & EDITORS
+# ============================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# ============================================
+# DEPLOYMENT
+# ============================================
+# Vercel
 .vercel
+.vercel.json
 
-# typescript
+# Netlify
+.netlify
+
+# AWS
+.aws-sam/
+.aws/
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# ============================================
+# TYPESCRIPT
+# ============================================
 *.tsbuildinfo
 next-env.d.ts
+.tsbuildinfo
+
+# ============================================
+# TEMPORARY FILES
+# ============================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache
+.temp
+tmp/
+temp/
+
+# ============================================
+# BACKUP FILES
+# ============================================
+*.bak
+*.backup
+*.old
+*.orig
+
+# ============================================
+# DATABASE
+# ============================================
+# SQLite
+*.sqlite
+*.sqlite3
+*.db
+
+# Local database files
+/database/local/
+*.sql.backup
+
+# ============================================
+# UPLOADS & USER CONTENT
+# ============================================
+/uploads/
+/public/uploads/
+/storage/
+
+# ============================================
+# MISC
+# ============================================
+# Sentry
+.sentryclirc
+
+# Storybook
+storybook-static/
+
+# Turbopack
+.turbo
+
+# Debug
+.vscode-test
+
+# Local development
+.local
+
+# ============================================
+# DOCUMENTATION (Internal/Development Only)
+# ============================================
+# Keep only essential docs, exclude internal/development documentation
+BACKEND_ARCHITECTURE.md
+DEPLOYMENT.md
+GITHUB_READY.md
+GITHUB_UPLOAD_CHECKLIST.md
+SECURITY.md
+WINDOWS_SETUP.md
+COMMIT_SUMMARY.md
+
+# Keep these essential docs:
+# README.md - Main project documentation (NOT ignored)
+# database/local-setup/README.md - Database setup guide (NOT ignored)
+
+# ============================================
+# CUSTOM PROJECT FILES
+# ============================================
+# Add any project-specific files here
+# Example:
+# /custom-config.json
+# /local-data/
