@@ -4,16 +4,13 @@ import { useEffect } from 'react';
 import Button from './Button';
 import { AlertCircle, X, LogOut } from 'lucide-react';
 
+import { DatabaseConnectionConfig } from '../types/database-connection';
+
 interface DisconnectConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  connectionInfo?: {
-    host: string;
-    port: string;
-    serviceName: string;
-    username: string;
-  };
+  connectionInfo?: DatabaseConnectionConfig | null;
 }
 
 export default function DisconnectConfirmModal({
@@ -46,7 +43,7 @@ export default function DisconnectConfirmModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      className="fixed inset-0 z-9999 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}
     >
@@ -85,18 +82,63 @@ export default function DisconnectConfirmModal({
           <div className="bg-white border-4 border-poe-black rounded-2xl p-4 mb-6">
             <h3 className="text-sm font-black uppercase tracking-wide mb-3">Current Connection:</h3>
             <div className="space-y-2 text-sm font-bold">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Host:</span>
-                <span className="font-black">{connectionInfo.host}:{connectionInfo.port}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Service:</span>
-                <span className="font-black">{connectionInfo.serviceName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">User:</span>
-                <span className="font-black">{connectionInfo.username}</span>
-              </div>
+              {/* Show different info based on database type */}
+              {connectionInfo.type === 'oracle' && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Host:</span>
+                    <span className="font-black">{connectionInfo.host}:{connectionInfo.port}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Service:</span>
+                    <span className="font-black">{connectionInfo.serviceName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">User:</span>
+                    <span className="font-black">{connectionInfo.username}</span>
+                  </div>
+                </>
+              )}
+              {(connectionInfo.type === 'mysql' || connectionInfo.type === 'postgresql' || connectionInfo.type === 'sqlserver') && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Host:</span>
+                    <span className="font-black">{connectionInfo.host}:{connectionInfo.port}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Database:</span>
+                    <span className="font-black">{connectionInfo.database}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">User:</span>
+                    <span className="font-black">{connectionInfo.username}</span>
+                  </div>
+                </>
+              )}
+              {connectionInfo.type === 'sqlite' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">File:</span>
+                  <span className="font-black truncate ml-2">{connectionInfo.filePath}</span>
+                </div>
+              )}
+              {connectionInfo.type === 'mongodb' && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Host:</span>
+                    <span className="font-black">{connectionInfo.host}:{connectionInfo.port}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Database:</span>
+                    <span className="font-black">{connectionInfo.database}</span>
+                  </div>
+                  {connectionInfo.username && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">User:</span>
+                      <span className="font-black">{connectionInfo.username}</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}

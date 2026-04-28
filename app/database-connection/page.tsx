@@ -188,12 +188,12 @@ function DatabaseConnectionPage() {
                 onSelect={handleDatabaseSelect}
               />
             )
-          ) : (
+          ) : connectionConfig ? (
             <QueryEditor 
               connectionConfig={connectionConfig} 
               onDisconnect={handleDisconnectClick}
             />
-          )}
+          ) : null}
         </div>
       </main>
 
