@@ -337,7 +337,6 @@ export default function UniversalConnectionForm({
                 <Button
                   variant="yellow"
                   size="md"
-                  type="button"
                   onClick={() => {
                     // In a real app, this would open a file picker
                     alert('File picker would open here. For now, please type the path manually.');
