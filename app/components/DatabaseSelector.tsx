@@ -21,6 +21,7 @@ export default function DatabaseSelector({ selectedType, onSelect }: DatabaseSel
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {DATABASE_TYPES.map((db) => {
           const isSelected = selectedType === db.id;
+          const isNotSupported = db.id === 'sqlite'; // Only SQLite is not supported
           
           return (
             <button
@@ -33,10 +34,18 @@ export default function DatabaseSelector({ selectedType, onSelect }: DatabaseSel
                   ? 'bg-poe-blue text-white cartoon-shadow-lg transform -translate-y-1' 
                   : 'bg-white hover:bg-gray-50 hover:cartoon-shadow'
                 }
+                ${isNotSupported ? 'opacity-75' : ''}
               `}
             >
+              {/* Not Supported Badge */}
+              {isNotSupported && (
+                <div className="absolute top-3 right-3 px-2 py-1 bg-poe-pink border-2 border-poe-black rounded-lg">
+                  <span className="text-xs font-black">Serverless ✗</span>
+                </div>
+              )}
+
               {/* Selection Indicator */}
-              {isSelected && (
+              {isSelected && !isNotSupported && (
                 <div className="absolute top-3 right-3 w-8 h-8 bg-poe-green border-4 border-poe-black rounded-full flex items-center justify-center">
                   <Check className="w-4 h-4 text-white" strokeWidth={4} />
                 </div>
@@ -72,9 +81,15 @@ export default function DatabaseSelector({ selectedType, onSelect }: DatabaseSel
 
       {/* Help Text */}
       <div className="mt-6 bg-poe-yellow bg-opacity-20 border-4 border-poe-black rounded-2xl p-4">
-        <p className="text-sm font-bold">
-          <span className="font-black">💡 Tip:</span> Select the database type that matches your server. 
-          Each database has different connection requirements and features.
+        <p className="text-sm font-bold mb-2">
+          <span className="font-black">💡 Tip:</span> Select the database type that matches your server.
+        </p>
+        <p className="text-xs font-bold text-gray-600 mb-2">
+          <span className="font-black">✅ Supported:</span> PostgreSQL, MySQL, SQL Server, MongoDB, Oracle (via proxy)
+        </p>
+        <p className="text-xs font-bold text-gray-600">
+          <span className="font-black">⚠️ Note:</span> SQLite is file-based and not supported in serverless environments. 
+          Oracle requires a proxy service (see documentation).
         </p>
       </div>
     </div>
