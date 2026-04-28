@@ -20,6 +20,8 @@ export { default as StoredTranslationsPanel } from './StoredTranslationsPanel';
 export { default as SaveToDbButton } from './SaveToDbButton';
 export { default as SavedTranslationsPanel } from './SavedTranslationsPanel';
 export { default as OracleConnectionForm } from './OracleConnectionForm';
+export { default as DatabaseSelector } from './DatabaseSelector';
+export { default as UniversalConnectionForm } from './UniversalConnectionForm';
 export { default as QueryEditor } from './QueryEditor';
 export { default as ConnectionStatusModal } from './ConnectionStatusModal';
 export { default as DisconnectConfirmModal } from './DisconnectConfirmModal';

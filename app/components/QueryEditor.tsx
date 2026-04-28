@@ -19,10 +19,11 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react';
-import type { OracleConnectionConfig } from './OracleConnectionForm';
+import type { DatabaseConnectionConfig } from '../types/database-connection';
+import { DATABASE_TYPES } from '../types/database-connection';
 
 interface QueryEditorProps {
-  connectionConfig: OracleConnectionConfig;
+  connectionConfig: DatabaseConnectionConfig;
   onDisconnect: () => void;
 }
 
@@ -78,13 +79,13 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
     setQueryResult(null);
 
     try {
-      const response = await fetch('/api/oracle/execute-query', {
+      const response = await fetch('/api/database/execute-query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...connectionConfig,
+          connectionConfig,
           query: query.trim(),
         }),
       });
@@ -227,6 +228,65 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
     setSuccessMessage('Results exported successfully');
   };
 
+  const getConnectionInfo = () => {
+    const dbInfo = DATABASE_TYPES.find(db => db.id === connectionConfig.type);
+    
+    switch (connectionConfig.type) {
+      case 'oracle':
+        return {
+          title: `${dbInfo?.name} Database`,
+          details: [
+            { label: 'Host', value: `${connectionConfig.host}:${connectionConfig.port}` },
+            { label: 'Service', value: connectionConfig.serviceName },
+            { label: 'User', value: connectionConfig.username },
+          ]
+        };
+      case 'mysql':
+      case 'postgresql':
+        return {
+          title: `${dbInfo?.name} Database`,
+          details: [
+            { label: 'Host', value: `${connectionConfig.host}:${connectionConfig.port}` },
+            { label: 'Database', value: connectionConfig.database },
+            { label: 'User', value: connectionConfig.username },
+          ]
+        };
+      case 'sqlite':
+        return {
+          title: `${dbInfo?.name} Database`,
+          details: [
+            { label: 'File', value: connectionConfig.filePath },
+          ]
+        };
+      case 'sqlserver':
+        return {
+          title: `${dbInfo?.name} Database`,
+          details: [
+            { label: 'Host', value: `${connectionConfig.host}:${connectionConfig.port}` },
+            { label: 'Database', value: connectionConfig.database },
+            { label: 'User', value: connectionConfig.username },
+            ...(connectionConfig.instance ? [{ label: 'Instance', value: connectionConfig.instance }] : []),
+          ]
+        };
+      case 'mongodb':
+        return {
+          title: `${dbInfo?.name}`,
+          details: [
+            { label: 'Host', value: `${connectionConfig.host}:${connectionConfig.port}` },
+            { label: 'Database', value: connectionConfig.database },
+            ...(connectionConfig.username ? [{ label: 'User', value: connectionConfig.username }] : []),
+          ]
+        };
+      default:
+        return {
+          title: 'Database',
+          details: []
+        };
+    }
+  };
+
+  const connectionInfo = getConnectionInfo();
+
   const insertSampleQuery = (queryType: keyof typeof sampleQueries) => {
     setQuery(sampleQueries[queryType]);
   };
@@ -237,11 +297,13 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
       <div className="bg-white border-4 border-poe-black rounded-3xl cartoon-shadow p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-xl font-black mb-2">Connected to Oracle Database</h3>
+            <h3 className="text-xl font-black mb-2">{connectionInfo.title}</h3>
             <div className="space-y-1 text-sm font-bold">
-              <p><span className="font-black">Host:</span> {connectionConfig.host}:{connectionConfig.port}</p>
-              <p><span className="font-black">Service:</span> {connectionConfig.serviceName}</p>
-              <p><span className="font-black">User:</span> {connectionConfig.username}</p>
+              {connectionInfo.details.map((detail, idx) => (
+                <p key={idx}>
+                  <span className="font-black">{detail.label}:</span> {detail.value}
+                </p>
+              ))}
             </div>
           </div>
           <Button variant="pink" size="md" onClick={onDisconnect}>

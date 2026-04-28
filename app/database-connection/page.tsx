@@ -4,18 +4,21 @@ import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import CartoonBackground from '../components/CartoonBackground';
 import Button from '../components/Button';
-import OracleConnectionForm from '../components/OracleConnectionForm';
+import DatabaseSelector from '../components/DatabaseSelector';
+import UniversalConnectionForm from '../components/UniversalConnectionForm';
 import QueryEditor from '../components/QueryEditor';
 import ConnectionStatusModal from '../components/ConnectionStatusModal';
 import DisconnectConfirmModal from '../components/DisconnectConfirmModal';
 import { ArrowLeft, Database, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { withAuth } from '../lib/withAuth';
+import { DatabaseType, DatabaseConnectionConfig, DATABASE_TYPES } from '../types/database-connection';
 
 function DatabaseConnectionPage() {
   const router = useRouter();
+  const [selectedDatabaseType, setSelectedDatabaseType] = useState<DatabaseType | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionConfig, setConnectionConfig] = useState<any>(null);
+  const [connectionConfig, setConnectionConfig] = useState<DatabaseConnectionConfig | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{
@@ -24,28 +27,33 @@ function DatabaseConnectionPage() {
   } | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
 
-  const handleConnectionSuccess = (config: any) => {
+  const handleDatabaseSelect = (type: DatabaseType) => {
+    setSelectedDatabaseType(type);
+  };
+
+  const handleBackToSelector = () => {
+    setSelectedDatabaseType(null);
+  };
+
+  const handleConnectionSuccess = (config: DatabaseConnectionConfig) => {
     setIsConnected(true);
     setConnectionConfig(config);
+    const dbInfo = DATABASE_TYPES.find(db => db.id === config.type);
     setConnectionStatus({
       success: true,
-      message: 'Successfully connected to Oracle Database!'
+      message: `Successfully connected to ${dbInfo?.name} Database!`
     });
     setShowStatusModal(true);
   };
 
   const handleDisconnectClick = () => {
-    // Show disconnect confirmation modal
     setShowDisconnectModal(true);
   };
 
   const handleDisconnectConfirm = () => {
-    // Actually disconnect
     setIsConnected(false);
     setConnectionConfig(null);
-    
-    // Don't show status modal after disconnect
-    // User already confirmed in disconnect modal
+    setSelectedDatabaseType(null);
   };
 
   const handleTestConnection = async () => {
@@ -54,7 +62,7 @@ function DatabaseConnectionPage() {
     setIsTestingConnection(true);
     
     try {
-      const response = await fetch('/api/oracle/test-connection', {
+      const response = await fetch('/api/database/test-connection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,6 +95,22 @@ function DatabaseConnectionPage() {
     }
   };
 
+  const getPageTitle = () => {
+    if (isConnected && connectionConfig) {
+      const dbInfo = DATABASE_TYPES.find(db => db.id === connectionConfig.type);
+      return connectionConfig.name || `${dbInfo?.name} Database`;
+    }
+    return 'Database Connection';
+  };
+
+  const getPageIcon = () => {
+    if (connectionConfig) {
+      const dbInfo = DATABASE_TYPES.find(db => db.id === connectionConfig.type);
+      return dbInfo?.icon || '💾';
+    }
+    return '💾';
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       <CartoonBackground />
@@ -107,15 +131,15 @@ function DatabaseConnectionPage() {
           <div className="bg-poe-blue text-white border-4 border-poe-black rounded-3xl cartoon-shadow p-8 sm:p-10 mb-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-white border-4 border-poe-black rounded-2xl flex items-center justify-center shrink-0">
-                  <Database className="w-8 h-8 text-poe-blue" strokeWidth={3} />
+                <div className="w-16 h-16 bg-white border-4 border-poe-black rounded-2xl flex items-center justify-center shrink-0 text-4xl">
+                  {getPageIcon()}
                 </div>
                 <div>
                   <h1 className="text-4xl sm:text-5xl font-black leading-tight">
-                    Oracle Database
+                    {getPageTitle()}
                   </h1>
                   <p className="text-lg sm:text-xl font-bold opacity-90">
-                    Connect and manage your translations
+                    {isConnected ? 'Manage your database queries' : 'Connect to any database'}
                   </p>
                 </div>
               </div>
@@ -150,9 +174,20 @@ function DatabaseConnectionPage() {
             </div>
           </div>
 
-          {/* Connection Form or Query Editor */}
+          {/* Main Content */}
           {!isConnected ? (
-            <OracleConnectionForm onConnectionSuccess={handleConnectionSuccess} />
+            selectedDatabaseType ? (
+              <UniversalConnectionForm 
+                databaseType={selectedDatabaseType}
+                onConnectionSuccess={handleConnectionSuccess}
+                onBack={handleBackToSelector}
+              />
+            ) : (
+              <DatabaseSelector 
+                selectedType={selectedDatabaseType}
+                onSelect={handleDatabaseSelect}
+              />
+            )
           ) : (
             <QueryEditor 
               connectionConfig={connectionConfig} 
