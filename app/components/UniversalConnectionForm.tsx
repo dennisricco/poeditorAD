@@ -75,7 +75,12 @@ export default function UniversalConnectionForm({
   const handleTestConnection = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔍 Test Connection clicked!');
+    console.log('📝 Form data:', formData);
+    console.log('✅ Form valid:', validateForm());
+    
     if (!validateForm()) {
+      console.log('❌ Form validation failed');
       setConnectionStatus({
         type: 'error',
         message: 'Please fill in all required fields',
@@ -86,6 +91,8 @@ export default function UniversalConnectionForm({
     setIsConnecting(true);
     setConnectionStatus({ type: null, message: '' });
 
+    console.log('🚀 Sending request to API...');
+
     try {
       const response = await fetch('/api/database/test-connection', {
         method: 'POST',
@@ -95,9 +102,13 @@ export default function UniversalConnectionForm({
         body: JSON.stringify(formData),
       });
 
+      console.log('📡 Response status:', response.status);
+      
       const data = await response.json();
+      console.log('📦 Response data:', data);
 
       if (response.ok && data.success) {
+        console.log('✅ Connection successful!');
         setConnectionStatus({
           type: 'success',
           message: 'Connection successful! You can now use the query editor.',
@@ -107,19 +118,21 @@ export default function UniversalConnectionForm({
           onConnectionSuccess(formData as DatabaseConnectionConfig);
         }, 1000);
       } else {
+        console.log('❌ Connection failed:', data.error);
         setConnectionStatus({
           type: 'error',
           message: data.error || 'Failed to connect to database',
         });
       }
     } catch (error) {
-      console.error('Connection error:', error);
+      console.error('💥 Connection error:', error);
       setConnectionStatus({
         type: 'error',
         message: 'Network error. Please check your connection and try again.',
       });
     } finally {
       setIsConnecting(false);
+      console.log('🏁 Request completed');
     }
   };
 
@@ -527,6 +540,7 @@ export default function UniversalConnectionForm({
         {/* Submit Button */}
         <div className="pt-2">
           <Button
+            type="submit"
             variant="blue"
             size="lg"
             className="w-full"

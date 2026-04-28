@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { DatabaseConnectionConfig } from '@/app/types/database-connection';
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,21 +80,166 @@ async function executePostgreSQLQuery(config: any, query: string) {
       );
     }
 
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create Supabase client with service role key (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
-    // Execute raw SQL query using Supabase RPC
+    const queryType = getQueryType(query);
+    console.log('🔍 Executing query type:', queryType);
+    console.log('📝 Query:', query);
+
+    // For SELECT queries, try direct table query first (simpler and more reliable)
+    if (queryType === 'SELECT') {
+      // Try to parse table name from query (handle schema.table format)
+      const tableMatch = query.match(/FROM\s+(?:([a-zA-Z_][a-zA-Z0-9_]*)\.)?\s*([a-zA-Z_][a-zA-Z0-9_]*)/i);
+      
+      if (tableMatch) {
+        const schema = tableMatch[1] || 'public';
+        const tableName = tableMatch[2];
+        const fullTableName = schema === 'public' ? tableName : `${schema}.${tableName}`;
+        console.log('📋 Detected table:', fullTableName);
+        
+        try {
+          // Simple SELECT * FROM table query
+          const { data: tableData, error: tableError } = await supabase
+            .from(tableName)
+            .select('*');
+
+          if (!tableError && tableData) {
+            console.log('✅ Direct table query successful, rows:', tableData.length);
+            console.log('📊 Sample data (first row):', tableData[0]);
+            
+            if (tableData.length > 0) {
+              // Get ALL columns from the first row
+              const columns = Object.keys(tableData[0]);
+              console.log('📋 Columns found:', columns);
+              
+              // Map each row to array format, preserving ALL columns
+              const rows = tableData.map(row => {
+                return columns.map(col => {
+                  const value = row[col];
+                  // Handle different data types properly
+                  if (value === null || value === undefined) {
+                    return null;
+                  }
+                  // Keep objects as-is (will be stringified by JSON.stringify)
+                  if (typeof value === 'object') {
+                    return value;
+                  }
+                  return value;
+                });
+              });
+              
+              console.log('✅ Mapped rows:', rows.length);
+              console.log('📊 Sample row data:', rows[0]);
+              
+              return NextResponse.json({
+                success: true,
+                result: {
+                  columns,
+                  rows,
+                  rowCount: rows.length,
+                  executionTime: Date.now() - startTime,
+                },
+              });
+            } else {
+              return NextResponse.json({
+                success: true,
+                result: {
+                  columns: [],
+                  rows: [],
+                  rowCount: 0,
+                  executionTime: Date.now() - startTime,
+                },
+              });
+            }
+          } else {
+            console.log('⚠️ Direct table query error:', tableError);
+          }
+        } catch (tableErr) {
+          console.log('⚠️ Direct table query failed:', tableErr);
+        }
+      }
+
+      // Fallback: Try RPC execute_sql
+      console.log('🔄 Trying RPC execute_sql...');
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('execute_sql', {
+          sql_query: query
+        });
+
+        if (!rpcError && rpcData) {
+          console.log('✅ RPC execution successful');
+          
+          if (Array.isArray(rpcData)) {
+            if (rpcData.length > 0) {
+              const columns = Object.keys(rpcData[0]);
+              const rows = rpcData.map(row => columns.map(col => row[col]));
+              
+              return NextResponse.json({
+                success: true,
+                result: {
+                  columns,
+                  rows,
+                  rowCount: rows.length,
+                  executionTime: Date.now() - startTime,
+                },
+              });
+            } else {
+              return NextResponse.json({
+                success: true,
+                result: {
+                  columns: [],
+                  rows: [],
+                  rowCount: 0,
+                  executionTime: Date.now() - startTime,
+                },
+              });
+            }
+          }
+        } else {
+          console.log('⚠️ RPC error:', rpcError);
+          
+          // If RPC function doesn't exist
+          if (rpcError && rpcError.code === '42883') {
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: 'SQL execution function not found. Please use simple SELECT * FROM table_name queries, or create the execute_sql function in Supabase (see supabase-setup-function.sql).' 
+              },
+              { status: 400 }
+            );
+          }
+        }
+      } catch (rpcErr: any) {
+        console.log('⚠️ RPC exception:', rpcErr);
+      }
+
+      // If all methods fail
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Unable to execute SELECT query. Please use simple SELECT * FROM table_name format.' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // For non-SELECT queries, must use RPC
     const { data, error } = await supabase.rpc('execute_sql', {
       sql_query: query
     });
 
     if (error) {
-      // If RPC function doesn't exist, provide helpful error
       if (error.code === '42883') {
         return NextResponse.json(
           { 
             success: false, 
-            error: 'SQL execution function not found. Please create the execute_sql function in Supabase. Run: CREATE OR REPLACE FUNCTION execute_sql(sql_query text) RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$ DECLARE result json; BEGIN EXECUTE sql_query INTO result; RETURN result; EXCEPTION WHEN OTHERS THEN RETURN json_build_object(\'error\', SQLERRM); END; $$;' 
+            error: 'SQL execution function not found. For INSERT/UPDATE/DELETE/CREATE queries, please create the execute_sql function in Supabase. See supabase-setup-function.sql for instructions.' 
           },
           { status: 400 }
         );
@@ -103,44 +247,11 @@ async function executePostgreSQLQuery(config: any, query: string) {
       throw error;
     }
 
-    const executionTime = Date.now() - startTime;
-    const queryType = getQueryType(query);
-
-    // Parse result based on query type
-    if (queryType === 'SELECT' && Array.isArray(data)) {
-      // Convert array of objects to columns and rows format
-      if (data.length > 0) {
-        const columns = Object.keys(data[0]);
-        const rows = data.map(row => columns.map(col => row[col]));
-        
-        return NextResponse.json({
-          success: true,
-          result: {
-            columns,
-            rows,
-            rowCount: rows.length,
-            executionTime,
-          },
-        });
-      } else {
-        return NextResponse.json({
-          success: true,
-          result: {
-            columns: [],
-            rows: [],
-            rowCount: 0,
-            executionTime,
-          },
-        });
-      }
-    }
-
-    // For non-SELECT queries
     return NextResponse.json({
       success: true,
       message: `${queryType} query executed successfully`,
       rowsAffected: data?.affected_rows || 0,
-      executionTime,
+      executionTime: Date.now() - startTime,
     });
 
   } catch (error: any) {

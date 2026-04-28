@@ -19,7 +19,6 @@ export { default as OTPInput } from './OTPInput';
 export { default as StoredTranslationsPanel } from './StoredTranslationsPanel';
 export { default as SaveToDbButton } from './SaveToDbButton';
 export { default as SavedTranslationsPanel } from './SavedTranslationsPanel';
-export { default as OracleConnectionForm } from './OracleConnectionForm';
 export { default as DatabaseSelector } from './DatabaseSelector';
 export { default as UniversalConnectionForm } from './UniversalConnectionForm';
 export { default as QueryEditor } from './QueryEditor';

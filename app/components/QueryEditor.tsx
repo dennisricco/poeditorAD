@@ -16,8 +16,7 @@ import {
   Table,
   FileText,
   Clock,
-  Filter,
-  RefreshCw
+  Filter
 } from 'lucide-react';
 import type { DatabaseConnectionConfig } from '../types/database-connection';
 import { DATABASE_TYPES } from '../types/database-connection';
@@ -78,24 +77,41 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
     setSuccessMessage(null);
     setQueryResult(null);
 
+    console.log('🚀 Executing query...');
+    console.log('📝 Query:', query.trim());
+    console.log('🔧 Connection config:', connectionConfig);
+
     try {
+      const requestBody = {
+        connectionConfig,
+        query: query.trim(),
+      };
+      
+      console.log('📦 Request body:', requestBody);
+
       const response = await fetch('/api/database/execute-query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          connectionConfig,
-          query: query.trim(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('📡 Response status:', response.status);
+
       const data = await response.json();
+      console.log('📦 Response data:', data);
 
       if (response.ok && data.success) {
         if (data.result) {
+          console.log('✅ Query successful, rows:', data.result.rowCount);
           setQueryResult(data.result);
-          setSuccessMessage(`Query executed successfully in ${data.result.executionTime}ms`);
+          
+          if (data.result.rowCount === 0) {
+            setSuccessMessage(`Query executed successfully in ${data.result.executionTime}ms - No data found`);
+          } else {
+            setSuccessMessage(`Query executed successfully in ${data.result.executionTime}ms`);
+          }
           
           // Add to history
           setQueryHistory(prev => [{
@@ -104,6 +120,7 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
             status: 'success'
           }, ...prev.slice(0, 9)]); // Keep last 10
         } else {
+          console.log('✅ Query successful (no results)');
           setSuccessMessage(data.message || 'Query executed successfully');
           
           // Add to history
@@ -114,6 +131,7 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
           }, ...prev.slice(0, 9)]);
         }
       } else {
+        console.log('❌ Query failed:', data.error);
         setError(data.error || 'Failed to execute query');
         
         // Add to history
@@ -436,7 +454,7 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
       </div>
 
       {/* Query Results Section - Separate */}
-      {queryResult && queryResult.rows.length > 0 && (
+      {queryResult && (
         <div className="bg-white border-4 border-poe-black rounded-3xl cartoon-shadow p-6">
           {/* Results Header */}
           <div className="flex items-center justify-between mb-4">
@@ -472,101 +490,185 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
                 <Trash2 className="w-5 h-5" strokeWidth={3} />
                 Clear Results
               </Button>
-              <Button variant="green" size="md" onClick={handleExportResults}>
-                <Download className="w-5 h-5" strokeWidth={3} />
-                Export JSON
-              </Button>
-            </div>
-          </div>
-
-          {/* Search Filter */}
-          <div className="mb-4">
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" strokeWidth={3} />
-              <input
-                type="text"
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                placeholder="Filter results..."
-                className="w-full pl-12 pr-4 py-3 border-4 border-poe-black rounded-xl font-bold text-base focus:outline-none focus:ring-4 focus:ring-poe-blue focus:ring-opacity-50 transition-all"
-              />
-              {searchFilter && (
-                <button
-                  onClick={() => setSearchFilter('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <Trash2 className="w-5 h-5" strokeWidth={3} />
-                </button>
+              {queryResult.rows.length > 0 && (
+                <Button variant="green" size="md" onClick={handleExportResults}>
+                  <Download className="w-5 h-5" strokeWidth={3} />
+                  Export JSON
+                </Button>
               )}
             </div>
           </div>
 
-          {/* Results Table */}
-          <div className="overflow-x-auto border-4 border-poe-black rounded-xl">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-poe-blue text-white">
-                  <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide border-r-4 border-poe-black">
-                    #
-                  </th>
-                  {queryResult.columns.map((col, idx) => (
-                    <th
-                      key={idx}
-                      className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide border-r-4 border-poe-black last:border-r-0"
+          {queryResult.rows.length > 0 ? (
+            <>
+              {/* Search Filter */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" strokeWidth={3} />
+                  <input
+                    type="text"
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    placeholder="Filter results..."
+                    className="w-full pl-12 pr-4 py-3 border-4 border-poe-black rounded-xl font-bold text-base focus:outline-none focus:ring-4 focus:ring-poe-blue focus:ring-opacity-50 transition-all"
+                  />
+                  {searchFilter && (
+                    <button
+                      onClick={() => setSearchFilter('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {queryResult.rows
-                  .filter(row => {
-                    if (!searchFilter) return true;
-                    return row.some(cell => 
-                      String(cell).toLowerCase().includes(searchFilter.toLowerCase())
-                    );
-                  })
-                  .map((row, rowIdx) => (
-                    <tr
-                      key={rowIdx}
-                      className={`border-t-4 border-poe-black ${
-                        rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } hover:bg-blue-50 transition-colors`}
-                    >
-                      <td className="px-4 py-3 text-sm font-black text-gray-500 border-r-4 border-poe-black">
-                        {rowIdx + 1}
-                      </td>
-                      {row.map((cell, cellIdx) => (
-                        <td
-                          key={cellIdx}
-                          className="px-4 py-3 text-sm font-bold border-r-4 border-poe-black last:border-r-0"
+                      <Trash2 className="w-5 h-5" strokeWidth={3} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Results Table */}
+              <div className="overflow-x-auto border-4 border-poe-black rounded-xl">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-poe-blue text-white">
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide border-r-4 border-poe-black sticky left-0 bg-poe-blue z-10">
+                        #
+                      </th>
+                      {queryResult.columns.map((col, idx) => (
+                        <th
+                          key={idx}
+                          className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide border-r-4 border-poe-black last:border-r-0 whitespace-nowrap"
                         >
-                          {cell === null ? (
-                            <span className="text-gray-400 italic">NULL</span>
-                          ) : typeof cell === 'object' ? (
-                            <pre className="text-xs overflow-x-auto max-w-md">
-                              {JSON.stringify(cell, null, 2)}
-                            </pre>
-                          ) : (
-                            <span className={searchFilter && String(cell).toLowerCase().includes(searchFilter.toLowerCase()) ? 'bg-yellow-200' : ''}>
-                              {String(cell)}
-                            </span>
-                          )}
-                        </td>
+                          {col}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {queryResult.rows
+                      .filter(row => {
+                        if (!searchFilter) return true;
+                        return row.some(cell => 
+                          String(cell).toLowerCase().includes(searchFilter.toLowerCase())
+                        );
+                      })
+                      .map((row, rowIdx) => (
+                        <tr
+                          key={rowIdx}
+                          className={`border-t-4 border-poe-black ${
+                            rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          } hover:bg-blue-50 transition-colors`}
+                        >
+                          <td className="px-4 py-3 text-sm font-black text-gray-500 border-r-4 border-poe-black sticky left-0 bg-inherit z-10">
+                            {rowIdx + 1}
+                          </td>
+                          {row.map((cell, cellIdx) => {
+                            // Format cell value
+                            let displayValue = cell;
+                            let isLong = false;
+                            
+                            if (cell === null || cell === undefined) {
+                              displayValue = <span className="text-gray-400 italic">NULL</span>;
+                            } else if (typeof cell === 'object') {
+                              // JSON object
+                              const jsonStr = JSON.stringify(cell, null, 2);
+                              isLong = jsonStr.length > 100;
+                              displayValue = isLong ? (
+                                <span 
+                                  className="text-xs font-mono text-blue-600 cursor-pointer hover:underline" 
+                                  title="Click to view full JSON"
+                                  onClick={() => {
+                                    // Show in alert or copy to clipboard
+                                    if (confirm('Copy JSON to clipboard?')) {
+                                      navigator.clipboard.writeText(jsonStr);
+                                      alert('Copied to clipboard!');
+                                    }
+                                  }}
+                                >
+                                  {'{...}'} (JSON - {jsonStr.length} chars)
+                                </span>
+                              ) : (
+                                <pre className="text-xs font-mono overflow-x-auto max-w-md whitespace-pre-wrap">
+                                  {jsonStr}
+                                </pre>
+                              );
+                            } else if (typeof cell === 'boolean') {
+                              displayValue = (
+                                <span className={`px-2 py-1 rounded text-xs font-black ${cell ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {cell ? 'TRUE' : 'FALSE'}
+                                </span>
+                              );
+                            } else {
+                              const strValue = String(cell);
+                              isLong = strValue.length > 100;
+                              
+                              if (isLong) {
+                                // Truncate long text
+                                const truncated = strValue.substring(0, 100) + '...';
+                                displayValue = (
+                                  <span 
+                                    className="cursor-pointer hover:underline" 
+                                    title="Click to copy full text"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(strValue);
+                                      alert('Copied to clipboard!');
+                                    }}
+                                  >
+                                    {searchFilter && strValue.toLowerCase().includes(searchFilter.toLowerCase()) ? (
+                                      <span className="bg-yellow-200">{truncated}</span>
+                                    ) : (
+                                      truncated
+                                    )}
+                                    <span className="ml-2 text-xs text-blue-600 font-black">[{strValue.length} chars - Click to copy]</span>
+                                  </span>
+                                );
+                              } else {
+                                displayValue = searchFilter && strValue.toLowerCase().includes(searchFilter.toLowerCase()) ? (
+                                  <span className="bg-yellow-200">{strValue}</span>
+                                ) : (
+                                  strValue
+                                );
+                              }
+                            }
+                            
+                            return (
+                              <td
+                                key={cellIdx}
+                                className="px-4 py-3 text-sm font-bold border-r-4 border-poe-black last:border-r-0 max-w-md"
+                              >
+                                {displayValue}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
 
-          {/* Filtered Results Info */}
-          {searchFilter && (
-            <div className="mt-4 text-sm font-bold text-gray-600">
-              Showing {queryResult.rows.filter(row => 
-                row.some(cell => String(cell).toLowerCase().includes(searchFilter.toLowerCase()))
-              ).length} of {queryResult.rowCount} rows
+              {/* Filtered Results Info */}
+              {searchFilter && (
+                <div className="mt-4 text-sm font-bold text-gray-600">
+                  Showing {queryResult.rows.filter(row => 
+                    row.some(cell => String(cell).toLowerCase().includes(searchFilter.toLowerCase()))
+                  ).length} of {queryResult.rowCount} rows
+                </div>
+              )}
+            </>
+          ) : (
+            /* Empty Results Message */
+            <div className="bg-poe-yellow bg-opacity-20 border-4 border-poe-black rounded-2xl p-8 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 bg-poe-yellow border-4 border-poe-black rounded-2xl flex items-center justify-center">
+                  <Database className="w-10 h-10" strokeWidth={3} />
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black mb-2">No Data Found</h4>
+                  <p className="text-base font-bold text-gray-600">
+                    The query executed successfully but returned no rows.
+                  </p>
+                  <p className="text-sm font-bold text-gray-600 mt-2">
+                    The table might be empty or your query filters returned no matches.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>
