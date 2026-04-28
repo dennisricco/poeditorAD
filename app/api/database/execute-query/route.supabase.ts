@@ -1,6 +1,8 @@
+// Simple Supabase implementation for query execution
+// Rename this file to route.ts to use in production
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { DatabaseConnectionConfig } from '@/app/types/database-connection';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,21 +50,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to determine query type
-function getQueryType(query: string): string {
-  const queryUpper = query.trim().toUpperCase();
-  if (queryUpper.startsWith('SELECT')) return 'SELECT';
-  if (queryUpper.startsWith('INSERT')) return 'INSERT';
-  if (queryUpper.startsWith('UPDATE')) return 'UPDATE';
-  if (queryUpper.startsWith('DELETE')) return 'DELETE';
-  if (queryUpper.startsWith('CREATE')) return 'CREATE';
-  if (queryUpper.startsWith('DROP')) return 'DROP';
-  if (queryUpper.startsWith('ALTER')) return 'ALTER';
-  if (queryUpper.startsWith('TRUNCATE')) return 'TRUNCATE';
-  return 'OTHER';
-}
-
-// PostgreSQL Query Execution using Supabase
 async function executePostgreSQLQuery(config: any, query: string) {
   const startTime = Date.now();
 
@@ -85,6 +72,7 @@ async function executePostgreSQLQuery(config: any, query: string) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Execute raw SQL query using Supabase RPC
+    // Note: You need to create a PostgreSQL function in Supabase for this
     const { data, error } = await supabase.rpc('execute_sql', {
       sql_query: query
     });
@@ -95,7 +83,7 @@ async function executePostgreSQLQuery(config: any, query: string) {
         return NextResponse.json(
           { 
             success: false, 
-            error: 'SQL execution function not found. Please create the execute_sql function in Supabase. Run: CREATE OR REPLACE FUNCTION execute_sql(sql_query text) RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$ DECLARE result json; BEGIN EXECUTE sql_query INTO result; RETURN result; EXCEPTION WHEN OTHERS THEN RETURN json_build_object(\'error\', SQLERRM); END; $$;' 
+            error: 'SQL execution function not found. Please create the execute_sql function in Supabase. See documentation for setup instructions.' 
           },
           { status: 400 }
         );
@@ -104,9 +92,10 @@ async function executePostgreSQLQuery(config: any, query: string) {
     }
 
     const executionTime = Date.now() - startTime;
-    const queryType = getQueryType(query);
 
     // Parse result based on query type
+    const queryType = getQueryType(query);
+
     if (queryType === 'SELECT' && Array.isArray(data)) {
       // Convert array of objects to columns and rows format
       if (data.length > 0) {
@@ -153,4 +142,17 @@ async function executePostgreSQLQuery(config: any, query: string) {
       { status: 500 }
     );
   }
+}
+
+function getQueryType(query: string): string {
+  const queryUpper = query.trim().toUpperCase();
+  if (queryUpper.startsWith('SELECT')) return 'SELECT';
+  if (queryUpper.startsWith('INSERT')) return 'INSERT';
+  if (queryUpper.startsWith('UPDATE')) return 'UPDATE';
+  if (queryUpper.startsWith('DELETE')) return 'DELETE';
+  if (queryUpper.startsWith('CREATE')) return 'CREATE';
+  if (queryUpper.startsWith('DROP')) return 'DROP';
+  if (queryUpper.startsWith('ALTER')) return 'ALTER';
+  if (queryUpper.startsWith('TRUNCATE')) return 'TRUNCATE';
+  return 'OTHER';
 }
