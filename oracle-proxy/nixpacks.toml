@@ -1,0 +1,11 @@
+# Nixpacks configuration for Railway deployment
+# This tells Railway how to build and run the Oracle Proxy
+
+[phases.setup]
+nixPkgs = ["nodejs_18", "libaio"]
+
+[phases.install]
+cmds = ["npm ci --production"]
+
+[start]
+cmd = "npm start"
