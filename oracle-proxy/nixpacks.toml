@@ -5,7 +5,7 @@
 nixPkgs = ["nodejs_18", "libaio"]
 
 [phases.install]
-cmds = ["npm ci --production"]
+cmds = ["npm install --production"]
 
 [start]
 cmd = "npm start"
