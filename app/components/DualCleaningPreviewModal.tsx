@@ -3,6 +3,7 @@
 import { X, Download, AlertCircle, Trash2, Globe } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import JSZip from 'jszip';
 import Button from './Button';
 import LanguageFlag from './LanguageFlag';
 
@@ -60,6 +61,693 @@ export default function DualCleaningPreviewModal({
     combined: { totalStrings: 0, totalCleaned: 0 },
   });
   const [activeTab, setActiveTab] = useState<'lang1' | 'lang2' | 'combined'>('combined');
+
+  // Handler for download with SQL (ZIP version)
+  const handleDownloadWithSQL = async () => {
+    try {
+      // Helper to convert language code to locale format
+      const toLocaleFormat = (langCode: string): string => {
+        const normalized = langCode.toLowerCase();
+        const baseLang = normalized.split('-')[0];
+        return `${baseLang}-ID`;
+      };
+
+      const locale1 = toLocaleFormat(language1Code);
+      const locale2 = toLocaleFormat(language2Code);
+
+      // Prepare cleaned Lockey JSON
+      let lockeyData: Record<string, any>;
+
+      if (format === 'json') {
+        lockeyData = {
+          [locale1]: cleanedData1,
+          [locale2]: cleanedData2,
+        };
+      } else if (format === 'key_value_json') {
+        lockeyData = {
+          [locale1]: cleanedData1,
+          [locale2]: cleanedData2,
+        };
+      } else {
+        alert('SQL download only supports JSON formats');
+        return;
+      }
+
+      const jsonString = JSON.stringify(lockeyData, null, 2);
+      const termsCount = Object.keys(cleanedData1).length + Object.keys(cleanedData2).length;
+      const fileSize = new Blob([jsonString]).size;
+
+      // Create ZIP file
+      const zip = new JSZip();
+
+      // Add Lockey JSON file
+      zip.file(`lockey_${locale1}_${locale2}.json`, jsonString);
+
+      // Generate and add SQL files
+      const oracleSQL = generateOracleSQL(jsonString, locale1, locale2, termsCount, fileSize);
+      const postgresSQL = generatePostgresSQL(jsonString, locale1, locale2, termsCount, fileSize);
+      const mysqlSQL = generateMySQLSQL(jsonString, locale1, locale2, termsCount, fileSize);
+      const sqliteSQL = generateSQLiteSQL(jsonString, locale1, locale2, termsCount, fileSize);
+      const allDatabasesSQL = generateAllDatabasesSQL(oracleSQL, postgresSQL, mysqlSQL, sqliteSQL);
+
+      // Add SQL files to ZIP
+      zip.file('oracle_insert.sql', oracleSQL);
+      zip.file('postgresql_insert.sql', postgresSQL);
+      zip.file('mysql_insert.sql', mysqlSQL);
+      zip.file('sqlite_insert.sql', sqliteSQL);
+      zip.file('all_databases_insert.sql', allDatabasesSQL);
+      
+      // Add README
+      const readme = generateReadme(locale1, locale2, termsCount, fileSize);
+      zip.file('README.txt', readme);
+
+      // Generate ZIP and download
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipUrl = window.URL.createObjectURL(zipBlob);
+
+      const link = document.createElement('a');
+      link.href = zipUrl;
+      link.download = `lockey_${locale1}_${locale2}_with_sql.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(zipUrl);
+
+      alert(`✅ Downloaded ZIP file containing:\n\n` +
+            `📄 lockey_${locale1}_${locale2}.json\n` +
+            `📄 oracle_insert.sql ⭐ RECOMMENDED\n` +
+            `📄 postgresql_insert.sql\n` +
+            `📄 mysql_insert.sql\n` +
+            `📄 sqlite_insert.sql\n` +
+            `📄 all_databases_insert.sql\n` +
+            `📄 README.txt\n\n` +
+            `For Oracle users: Use oracle_insert.sql with CLOB solution!`);
+    } catch (error) {
+      console.error('Error creating ZIP:', error);
+      alert('❌ Failed to create ZIP file. Please try again.');
+    }
+  };
+
+  // Generate Oracle-specific SQL (CLOB solution - RECOMMENDED)
+  const generateOracleSQL = (jsonString: string, locale1: string, locale2: string, termsCount: number, fileSize: number): string => {
+    const escapedJson = jsonString.replace(/'/g, "''");
+    const timestamp = new Date().toISOString();
+    
+    return `-- ============================================
+-- ORACLE DATABASE - LOCKEY INSERT SCRIPT
+-- ============================================
+-- Generated: ${timestamp}
+-- Languages: ${locale1}, ${locale2}
+-- Terms Count: ${termsCount}
+-- File Size: ${fileSize} bytes
+-- Format: Multi-language structured JSON
+-- 
+-- RECOMMENDED SOLUTION: Use CLOB (Option 1)
+-- ============================================
+
+-- ============================================
+-- OPTION 1: CLOB SOLUTION (RECOMMENDED) ✅
+-- ============================================
+-- This is the EASIEST and RECOMMENDED way!
+-- No manual copy-paste needed!
+
+-- STEP 1: Change column type from BLOB to CLOB (ONE TIME ONLY)
+-- Run this ONCE if your column is currently BLOB:
+
+ALTER TABLE MAV_CONTENT.LANGUAGE_CONTENT_DATA 
+MODIFY LANGUAGE_PACK CLOB;
+
+-- STEP 2: Direct insert with CLOB (NO COPY-PASTE!)
+
+DECLARE
+  v_json CLOB := '${escapedJson}';
+  v_version NUMBER;
+BEGIN
+  -- Get next version number
+  SELECT NVL(MAX(LANGUAGE_VERSION), 0) + 1 
+  INTO v_version
+  FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA;
+  
+  -- Insert directly with CLOB
+  INSERT INTO MAV_CONTENT.LANGUAGE_CONTENT_DATA (
+    LANGUAGE_VERSION,
+    LANGUAGE_PACK,
+    VERSION,
+    UPDATED_BY,
+    UPDATED_TIME,
+    CREATED_BY,
+    CREATED_TIME
+  ) VALUES (
+    v_version,
+    v_json,  -- Direct CLOB insert - NO EMPTY_BLOB() needed!
+    1,
+    'SYSTEM',
+    SYSDATE,
+    'SYSTEM',
+    SYSDATE
+  );
+  
+  -- Update application version
+  UPDATE MAV_CONTENT.APPLICATION_DATA 
+  SET LANGUAGE_PACK_VERSION = v_version;
+  
+  COMMIT;
+  
+  DBMS_OUTPUT.PUT_LINE('✅ SUCCESS! Inserted version: ' || v_version);
+  DBMS_OUTPUT.PUT_LINE('Languages: ${locale1}, ${locale2}');
+  DBMS_OUTPUT.PUT_LINE('Terms count: ${termsCount}');
+END;
+/
+
+-- ============================================
+-- OPTION 2: BLOB SOLUTION (If you must use BLOB)
+-- ============================================
+-- Only use this if you CANNOT change to CLOB
+-- Requires creating a stored procedure first
+
+-- STEP 1: Create the procedure (ONE TIME ONLY)
+
+CREATE OR REPLACE PROCEDURE INSERT_LANGUAGE_PACK(
+  p_json_string IN CLOB,
+  p_version OUT NUMBER
+) AS
+  v_blob BLOB;
+  v_dest_offset INTEGER := 1;
+  v_src_offset INTEGER := 1;
+  v_lang_ctx INTEGER := DBMS_LOB.DEFAULT_LANG_CTX;
+  v_warning INTEGER;
+BEGIN
+  -- Get next version
+  SELECT NVL(MAX(LANGUAGE_VERSION), 0) + 1 
+  INTO p_version
+  FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA;
+  
+  -- Insert with empty BLOB first
+  INSERT INTO MAV_CONTENT.LANGUAGE_CONTENT_DATA (
+    LANGUAGE_VERSION,
+    LANGUAGE_PACK,
+    VERSION,
+    UPDATED_BY,
+    UPDATED_TIME,
+    CREATED_BY,
+    CREATED_TIME
+  ) VALUES (
+    p_version,
+    EMPTY_BLOB(),
+    1,
+    'SYSTEM',
+    SYSDATE,
+    'SYSTEM',
+    SYSDATE
+  ) RETURNING LANGUAGE_PACK INTO v_blob;
+  
+  -- Convert CLOB to BLOB and write
+  DBMS_LOB.CONVERTTOBLOB(
+    dest_lob => v_blob,
+    src_clob => p_json_string,
+    amount => DBMS_LOB.LOBMAXSIZE,
+    dest_offset => v_dest_offset,
+    src_offset => v_src_offset,
+    blob_csid => DBMS_LOB.DEFAULT_CSID,
+    lang_context => v_lang_ctx,
+    warning => v_warning
+  );
+  
+  -- Update application version
+  UPDATE MAV_CONTENT.APPLICATION_DATA 
+  SET LANGUAGE_PACK_VERSION = p_version;
+  
+  COMMIT;
+  
+  DBMS_OUTPUT.PUT_LINE('✅ SUCCESS! Inserted version: ' || p_version);
+  
+EXCEPTION
+  WHEN OTHERS THEN
+    ROLLBACK;
+    DBMS_OUTPUT.PUT_LINE('❌ ERROR: ' || SQLERRM);
+    RAISE;
+END INSERT_LANGUAGE_PACK;
+/
+
+-- STEP 2: Call the procedure
+
+DECLARE
+  v_json CLOB := '${escapedJson}';
+  v_version NUMBER;
+BEGIN
+  INSERT_LANGUAGE_PACK(v_json, v_version);
+  DBMS_OUTPUT.PUT_LINE('Inserted version: ' || v_version);
+  DBMS_OUTPUT.PUT_LINE('Languages: ${locale1}, ${locale2}');
+  DBMS_OUTPUT.PUT_LINE('Terms count: ${termsCount}');
+END;
+/
+
+-- ============================================
+-- VERIFICATION QUERIES
+-- ============================================
+
+-- Check if insert was successful
+SELECT 
+  LANGUAGE_VERSION,
+  VERSION,
+  CREATED_TIME,
+  UPDATED_TIME,
+  CREATED_BY,
+  DBMS_LOB.GETLENGTH(LANGUAGE_PACK) as PACK_SIZE_BYTES
+FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA
+WHERE LANGUAGE_VERSION = (
+  SELECT MAX(LANGUAGE_VERSION) 
+  FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA
+);
+
+-- Check application version
+SELECT LANGUAGE_PACK_VERSION
+FROM MAV_CONTENT.APPLICATION_DATA;
+
+-- View JSON content (first 1000 characters)
+SELECT 
+  LANGUAGE_VERSION,
+  SUBSTR(LANGUAGE_PACK, 1, 1000) as JSON_PREVIEW
+FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA
+WHERE LANGUAGE_VERSION = (
+  SELECT MAX(LANGUAGE_VERSION) 
+  FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA
+);
+
+-- ============================================
+-- TROUBLESHOOTING
+-- ============================================
+
+-- Error: ORA-01461 (can bind a LONG value only for insert into a LONG column)
+-- Solution: Use CLOB instead of VARCHAR2, or use the stored procedure
+
+-- Error: ORA-22835 (Buffer too small for CLOB to CHAR conversion)
+-- Solution: Use DBMS_LOB functions instead of direct conversion
+
+-- Check current column type
+SELECT 
+  COLUMN_NAME,
+  DATA_TYPE,
+  DATA_LENGTH
+FROM USER_TAB_COLUMNS
+WHERE TABLE_NAME = 'LANGUAGE_CONTENT_DATA'
+  AND COLUMN_NAME = 'LANGUAGE_PACK';
+
+-- ============================================
+-- NOTES
+-- ============================================
+-- 1. CLOB (Option 1) is STRONGLY RECOMMENDED
+-- 2. CLOB allows direct JSON queries (Oracle 12c+)
+-- 3. CLOB is easier to maintain and debug
+-- 4. BLOB requires complex conversion procedures
+-- 5. Always backup before running ALTER TABLE
+-- 6. Test in development environment first
+-- ============================================
+`;
+  };
+
+  // Generate PostgreSQL SQL
+  const generatePostgresSQL = (jsonString: string, locale1: string, locale2: string, termsCount: number, fileSize: number): string => {
+    const escapedJson = jsonString.replace(/'/g, "''");
+    const timestamp = new Date().toISOString();
+    
+    return `-- ============================================
+-- POSTGRESQL / SUPABASE - LOCKEY INSERT
+-- ============================================
+-- Generated: ${timestamp}
+-- Languages: ${locale1}, ${locale2}
+-- Terms Count: ${termsCount}
+-- File Size: ${fileSize} bytes
+-- ============================================
+
+INSERT INTO language_content_data (
+  user_id,
+  project_id,
+  project_name,
+  language_code,
+  language_name,
+  export_format,
+  cleaning_mode,
+  language_pack,
+  version,
+  terms_count,
+  file_size_bytes,
+  created_by,
+  updated_by,
+  created_time,
+  updated_time
+) VALUES (
+  'YOUR_USER_ID',  -- Replace with actual user ID
+  'YOUR_PROJECT_ID',  -- Replace with actual project ID
+  'YOUR_PROJECT_NAME',  -- Replace with project name
+  '${locale1}_${locale2}',
+  '${locale1.toUpperCase()} + ${locale2.toUpperCase()}',
+  'key_value_json',
+  'basic',
+  '${escapedJson}'::jsonb,  -- Cast to JSONB for better performance
+  1,
+  ${termsCount},
+  ${fileSize},
+  'SYSTEM',
+  'SYSTEM',
+  NOW(),
+  NOW()
+);
+
+-- Verification query
+SELECT 
+  language_version,
+  language_code,
+  language_name,
+  terms_count,
+  created_time
+FROM language_content_data
+ORDER BY language_version DESC
+LIMIT 1;
+`;
+  };
+
+  // Generate MySQL SQL
+  const generateMySQLSQL = (jsonString: string, locale1: string, locale2: string, termsCount: number, fileSize: number): string => {
+    const escapedJson = jsonString.replace(/'/g, "''");
+    const timestamp = new Date().toISOString();
+    
+    return `-- ============================================
+-- MYSQL - LOCKEY INSERT
+-- ============================================
+-- Generated: ${timestamp}
+-- Languages: ${locale1}, ${locale2}
+-- Terms Count: ${termsCount}
+-- File Size: ${fileSize} bytes
+-- ============================================
+
+INSERT INTO language_content_data (
+  user_id,
+  project_id,
+  project_name,
+  language_code,
+  language_name,
+  export_format,
+  cleaning_mode,
+  language_pack,
+  version,
+  terms_count,
+  file_size_bytes,
+  created_by,
+  updated_by,
+  created_time,
+  updated_time
+) VALUES (
+  'YOUR_USER_ID',  -- Replace with actual user ID
+  'YOUR_PROJECT_ID',  -- Replace with actual project ID
+  'YOUR_PROJECT_NAME',  -- Replace with project name
+  '${locale1}_${locale2}',
+  '${locale1.toUpperCase()} + ${locale2.toUpperCase()}',
+  'key_value_json',
+  'basic',
+  '${escapedJson}',  -- Direct JSON string
+  1,
+  ${termsCount},
+  ${fileSize},
+  'SYSTEM',
+  'SYSTEM',
+  NOW(),
+  NOW()
+);
+
+-- Verification query
+SELECT 
+  language_version,
+  language_code,
+  language_name,
+  terms_count,
+  created_time
+FROM language_content_data
+ORDER BY language_version DESC
+LIMIT 1;
+`;
+  };
+
+  // Generate SQLite SQL
+  const generateSQLiteSQL = (jsonString: string, locale1: string, locale2: string, termsCount: number, fileSize: number): string => {
+    const escapedJson = jsonString.replace(/'/g, "''");
+    const timestamp = new Date().toISOString();
+    
+    return `-- ============================================
+-- SQLITE - LOCKEY INSERT
+-- ============================================
+-- Generated: ${timestamp}
+-- Languages: ${locale1}, ${locale2}
+-- Terms Count: ${termsCount}
+-- File Size: ${fileSize} bytes
+-- ============================================
+
+INSERT INTO language_content_data (
+  user_id,
+  project_id,
+  project_name,
+  language_code,
+  language_name,
+  export_format,
+  cleaning_mode,
+  language_pack,
+  version,
+  terms_count,
+  file_size_bytes,
+  created_by,
+  updated_by,
+  created_time,
+  updated_time
+) VALUES (
+  'YOUR_USER_ID',
+  'YOUR_PROJECT_ID',
+  'YOUR_PROJECT_NAME',
+  '${locale1}_${locale2}',
+  '${locale1.toUpperCase()} + ${locale2.toUpperCase()}',
+  'key_value_json',
+  'basic',
+  '${escapedJson}',
+  1,
+  ${termsCount},
+  ${fileSize},
+  'SYSTEM',
+  'SYSTEM',
+  datetime('now'),
+  datetime('now')
+);
+
+-- Verification query
+SELECT 
+  language_version,
+  language_code,
+  language_name,
+  terms_count,
+  created_time
+FROM language_content_data
+ORDER BY language_version DESC
+LIMIT 1;
+`;
+  };
+
+  // Generate combined SQL for all databases
+  const generateAllDatabasesSQL = (oracleSQL: string, postgresSQL: string, mysqlSQL: string, sqliteSQL: string): string => {
+    return `-- ============================================
+-- ALL DATABASES - LOCKEY INSERT SCRIPT
+-- ============================================
+-- Generated: ${new Date().toISOString()}
+-- 
+-- This file contains SQL for all supported databases.
+-- For Oracle users: We recommend using oracle_insert.sql
+-- which has detailed CLOB/BLOB solutions.
+-- ============================================
+
+${oracleSQL}
+
+${postgresSQL}
+
+${mysqlSQL}
+
+${sqliteSQL}
+`;
+  };
+
+  // Generate README file
+  const generateReadme = (locale1: string, locale2: string, termsCount: number, fileSize: number): string => {
+    return `============================================
+LOCKEY LANGUAGE PACK - DOWNLOAD PACKAGE
+============================================
+
+Generated: ${new Date().toISOString()}
+Languages: ${locale1}, ${locale2}
+Terms Count: ${termsCount}
+File Size: ${fileSize} bytes
+
+============================================
+PACKAGE CONTENTS
+============================================
+
+1. lockey_${locale1}_${locale2}.json
+   - Validated and cleaned Lockey JSON file
+   - Multi-language structured format
+   - Ready to use
+
+2. oracle_insert.sql ⭐ RECOMMENDED FOR ORACLE USERS
+   - Oracle-specific SQL with CLOB solution
+   - Two options: CLOB (recommended) and BLOB
+   - Detailed instructions and troubleshooting
+   - No manual copy-paste needed!
+
+3. postgresql_insert.sql
+   - PostgreSQL / Supabase compatible
+   - Uses JSONB for better performance
+
+4. mysql_insert.sql
+   - MySQL compatible
+   - Direct JSON string insert
+
+5. sqlite_insert.sql
+   - SQLite compatible
+   - Lightweight solution
+
+6. all_databases_insert.sql
+   - Combined SQL for all databases
+   - Choose your database section
+
+7. README.txt (this file)
+   - Package information and instructions
+
+============================================
+QUICK START - ORACLE USERS
+============================================
+
+STEP 1: Change BLOB to CLOB (ONE TIME ONLY)
+   Run this in SQL Developer or sqlplus:
+   
+   ALTER TABLE MAV_CONTENT.LANGUAGE_CONTENT_DATA 
+   MODIFY LANGUAGE_PACK CLOB;
+
+STEP 2: Insert data
+   Open oracle_insert.sql
+   Copy the CLOB solution (Option 1)
+   Execute in your database
+   Done! ✅
+
+WHY CLOB?
+✅ Direct insert - no copy-paste
+✅ Easier to use
+✅ Better for JSON data
+✅ Can query JSON directly (Oracle 12c+)
+
+============================================
+QUICK START - OTHER DATABASES
+============================================
+
+PostgreSQL / Supabase:
+1. Open postgresql_insert.sql
+2. Replace placeholders (YOUR_USER_ID, etc.)
+3. Execute in Supabase SQL Editor
+4. Done! ✅
+
+MySQL:
+1. Open mysql_insert.sql
+2. Replace placeholders
+3. Execute in MySQL Workbench
+4. Done! ✅
+
+SQLite:
+1. Open sqlite_insert.sql
+2. Replace placeholders
+3. Execute in SQLite CLI
+4. Done! ✅
+
+============================================
+PLACEHOLDERS TO REPLACE
+============================================
+
+YOUR_USER_ID       → Your user ID
+YOUR_PROJECT_ID    → POEditor project ID
+YOUR_PROJECT_NAME  → Project name
+
+Example:
+  'YOUR_USER_ID'     → 'user_12345'
+  'YOUR_PROJECT_ID'  → 'project_001'
+  'YOUR_PROJECT_NAME'→ 'Mobile App'
+
+============================================
+VERIFICATION
+============================================
+
+After inserting, verify with:
+
+Oracle:
+SELECT LANGUAGE_VERSION, CREATED_TIME
+FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA
+WHERE LANGUAGE_VERSION = (
+  SELECT MAX(LANGUAGE_VERSION) 
+  FROM MAV_CONTENT.LANGUAGE_CONTENT_DATA
+);
+
+PostgreSQL/MySQL/SQLite:
+SELECT language_version, created_time
+FROM language_content_data
+ORDER BY language_version DESC
+LIMIT 1;
+
+============================================
+TROUBLESHOOTING
+============================================
+
+Problem: "JSON too large"
+Solution: Use CLOB instead of BLOB (Oracle)
+
+Problem: "Invalid JSON"
+Solution: Re-download from application
+
+Problem: "Permission denied"
+Solution: Check user permissions in database
+
+Problem: "Duplicate key"
+Solution: Check auto-increment version
+
+============================================
+BEST PRACTICES
+============================================
+
+1. ✅ Backup database before running
+2. ✅ Test in development first
+3. ✅ Use CLOB for Oracle (easier!)
+4. ✅ Verify results after insert
+5. ✅ Keep this ZIP for documentation
+
+============================================
+SUPPORT
+============================================
+
+For more information:
+- Check SQL file comments
+- Review database documentation
+- Contact system administrator
+
+============================================
+SUMMARY
+============================================
+
+This package provides everything you need to:
+✅ Insert Lockey JSON into your database
+✅ Support all major databases
+✅ Oracle CLOB solution (no copy-paste!)
+✅ Validated and cleaned data
+✅ Ready-to-use SQL scripts
+
+For Oracle users: Use oracle_insert.sql with 
+CLOB solution for best results!
+
+============================================
+Generated by POE3D Translation Manager
+Version: 1.0.0
+============================================
+`;
+  };
 
   // Helper function to get emoji for language
   const getLanguageEmoji = (langCode: string): string => {
@@ -463,6 +1151,24 @@ export default function DualCleaningPreviewModal({
               disabled={isDownloading}
             >
               Batal
+            </Button>
+            <Button
+              variant="blue"
+              size="md"
+              onClick={handleDownloadWithSQL}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <>
+                  <div className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" strokeWidth={3} />
+                  Download with SQL
+                </>
+              )}
             </Button>
             <Button
               variant="green"

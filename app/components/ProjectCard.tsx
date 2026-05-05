@@ -101,7 +101,7 @@ export default function ProjectCard({
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-5">
-        <h3 className="text-xl sm:text-2xl font-black leading-tight flex-1 min-w-0">
+        <h3 className="text-xl sm:text-2xl font-black leading-tight flex-1 min-w-0 break-words overflow-wrap-anywhere">
           {name}
         </h3>
         <div className="w-12 h-12 bg-white border-4 border-poe-black rounded-2xl flex items-center justify-center shrink-0">

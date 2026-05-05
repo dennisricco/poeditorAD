@@ -13,32 +13,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implement actual Oracle connection test
-    // For now, we'll simulate a connection test
-    // In production, you would use oracledb package:
-    // const oracledb = require('oracledb');
-    // const connection = await oracledb.getConnection({
-    //   user: username,
-    //   password: password,
-    //   connectString: `${host}:${port}/${serviceName}`
-    // });
-    // await connection.close();
+    // Get Oracle Proxy URL from environment
+    const oracleProxyUrl = process.env.ORACLE_PROXY_URL;
 
-    // Simulate connection delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (!oracleProxyUrl) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Oracle Proxy not configured. Please set ORACLE_PROXY_URL in environment variables.' 
+        },
+        { status: 500 }
+      );
+    }
 
-    // For demo purposes, accept any connection
-    // In production, replace this with actual Oracle connection logic
-    return NextResponse.json({
-      success: true,
-      message: 'Connection successful',
-      connectionInfo: {
+    console.log('🔗 Connecting to Oracle Proxy:', oracleProxyUrl);
+
+    // Forward request to Oracle Proxy
+    const proxyResponse = await fetch(`${oracleProxyUrl}/test-connection`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         host,
         port,
         serviceName,
         username,
-      },
+        password,
+      }),
     });
+
+    const proxyData = await proxyResponse.json();
+
+    if (!proxyResponse.ok) {
+      console.error('❌ Oracle Proxy error:', proxyData);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: proxyData.error || 'Failed to connect to Oracle database' 
+        },
+        { status: proxyResponse.status }
+      );
+    }
+
+    console.log('✅ Oracle connection successful via proxy');
+
+    return NextResponse.json(proxyData);
 
   } catch (error: any) {
     console.error('Oracle connection test error:', error);

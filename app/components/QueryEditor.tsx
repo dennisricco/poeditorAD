@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { DatabaseConnectionConfig } from '../types/database-connection';
 import { DATABASE_TYPES } from '../types/database-connection';
+import LockeySyncButton from './LockeySyncButton';
 
 interface QueryEditorProps {
   connectionConfig: DatabaseConnectionConfig;
@@ -330,6 +331,11 @@ export default function QueryEditor({ connectionConfig, onDisconnect }: QueryEdi
           </Button>
         </div>
       </div>
+
+      {/* Lockey Sync Section */}
+      <LockeySyncButton 
+        connectionConfig={connectionConfig}
+      />
 
       {/* Sample Queries */}
       <div className="bg-poe-yellow border-4 border-poe-black rounded-3xl cartoon-shadow p-6">

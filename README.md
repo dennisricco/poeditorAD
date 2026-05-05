@@ -22,10 +22,23 @@ A fun and colorful translation management platform with **3D Cartoon Neobrutalis
 - 📊 Version control with auto-increment
 - 📥 Load previous versions
 - 🗑️ Delete old versions
-- 🗄️ **Oracle Database Connection** (NEW!)
+- 🗄️ **Universal Database Connection** (NEW!)
+- 🔌 **Express.js Backend** (NEW!)
+- 🎯 **Multi-Database Support** (NEW!)
+  - MySQL
+  - PostgreSQL
+  - SQL Server
+  - Oracle (optional)
+  - SQLite (optional)
 - 📝 SQL Query Editor
-- 📤 Import Lockey JSON to Oracle
+- 📤 Import Lockey JSON to Database
+- 🔄 **Lockey Sync** (NEW!)
 - 📊 Export query results
+- 🔽 **Download with SQL Query** (NEW!)
+  - Download validated Lockey JSON
+  - Auto-generated SQL insert scripts
+  - Support for all databases (PostgreSQL, MySQL, Oracle, SQLite)
+  - Oracle BLOB/CLOB solutions included
 
 ### 🎨 Design System
 - 💥 3D Cartoon Neobrutalism style
@@ -40,6 +53,7 @@ A fun and colorful translation management platform with **3D Cartoon Neobrutalis
 - Node.js 18+
 - Supabase account (free)
 - POEditor API token
+- Database server (MySQL/PostgreSQL/SQL Server) - optional
 
 ### 1. Clone & Install
 ```bash
@@ -48,7 +62,17 @@ cd poe-3d-cartoon-bni
 npm install
 ```
 
-### 2. Setup Supabase
+### 2. Setup Backend (Optional - for multi-database support)
+```bash
+cd backend
+npm install --no-optional
+npm start
+```
+Backend akan berjalan di http://localhost:3001
+
+📖 **Backend guide**: [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md)
+
+### 3. Setup Supabase
 **⚠️ IMPORTANT: You must setup Supabase first!**
 
 1. Create project at https://supabase.com
@@ -58,16 +82,17 @@ npm install
 
 📖 **Detailed guide**: [NEXT_STEPS.md](./NEXT_STEPS.md)
 
-### 3. Configure Environment
+### 4. Configure Environment
 Edit `.env.local`:
 ```env
 NEXT_PUBLIC_POEDITOR_API_TOKEN=your-token
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3001/api
 ```
 
-### 4. Run Development Server
+### 5. Run Development Server
 ```bash
 npm run dev
 ```
@@ -81,6 +106,13 @@ Open http://localhost:3000
 - **[QUICK_START.md](./QUICK_START.md)** - Quick start guide
 - **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)** - Detailed Supabase setup
 - **[SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md)** - Complete setup checklist
+- **[BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md)** - 🔌 Backend integration guide (NEW!)
+
+### Backend Documentation
+- **[backend/README.md](./backend/README.md)** - Backend full documentation
+- **[backend/INSTALL.md](./backend/INSTALL.md)** - Installation troubleshooting
+- **[backend/QUICKSTART.md](./backend/QUICKSTART.md)** - Backend quick start
+- **[backend/SUMMARY.md](./backend/SUMMARY.md)** - Backend summary
 
 ### Features
 - **[AUTH_FLOW.md](./AUTH_FLOW.md)** - Authentication flow explained
@@ -88,7 +120,9 @@ Open http://localhost:3000
 - **[QUICK_START_SAVE_FEATURE.md](./QUICK_START_SAVE_FEATURE.md)** - ⚡ Save to Database quick start
 - **[SAVE_TO_DATABASE_COMPLETE.md](./SAVE_TO_DATABASE_COMPLETE.md)** - Complete Save feature guide
 - **[VISUAL_GUIDE_SAVE_BUTTON.md](./VISUAL_GUIDE_SAVE_BUTTON.md)** - Visual reference guide
-- **[ORACLE_SETUP.md](./ORACLE_SETUP.md)** - 🗄️ Oracle Database Connection setup (NEW!)
+- **[ORACLE_SETUP.md](./ORACLE_SETUP.md)** - 🗄️ Oracle Database Connection setup
+- **[DOWNLOAD_WITH_SQL_GUIDE.md](./DOWNLOAD_WITH_SQL_GUIDE.md)** - 🔽 Download with SQL Query guide
+- **[PANDUAN_DOWNLOAD_SQL.md](./PANDUAN_DOWNLOAD_SQL.md)** - 🔽 Panduan Download SQL (Bahasa Indonesia)
 
 ### Technical
 - **[DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)** - Database schema details
@@ -98,6 +132,7 @@ Open http://localhost:3000
 - **[FIX_401_UNAUTHORIZED.md](./FIX_401_UNAUTHORIZED.md)** - Auth fix documentation
 - **[DUAL_LANGUAGE_COMBINED_SAVE.md](./DUAL_LANGUAGE_COMBINED_SAVE.md)** - Dual language combined save
 - **[RINGKASAN_DUAL_LANGUAGE_SAVE.md](./RINGKASAN_DUAL_LANGUAGE_SAVE.md)** - Dual language save (Indonesian)
+- **[database/local-setup/oracle-blob-solution.sql](./database/local-setup/oracle-blob-solution.sql)** - 🗄️ Oracle BLOB/CLOB solutions
 
 ## 🎯 User Flow
 
@@ -119,6 +154,7 @@ Back to Landing
 
 ## 🏗️ Tech Stack
 
+### Frontend
 - **Framework**: Next.js 16.2.3 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
@@ -128,6 +164,18 @@ Back to Landing
 - **Icons**: Lucide React
 - **Flags**: flag-icons
 
+### Backend (NEW!)
+- **Framework**: Express.js 4.18
+- **Language**: JavaScript (Node.js)
+- **Database Drivers**:
+  - MySQL: mysql2
+  - PostgreSQL: pg
+  - SQL Server: tedious
+  - Oracle: oracledb (optional)
+  - SQLite: better-sqlite3 (optional)
+- **Security**: Helmet, CORS, Rate Limiting
+- **Performance**: Compression, Connection Pooling
+
 ## 📁 Project Structure
 
 ```
@@ -135,24 +183,39 @@ poe-3d-cartoon-bni/
 ├── app/
 │   ├── api/                    # API routes
 │   │   ├── poeditor/          # POEditor endpoints
-│   │   └── translations/      # Translation endpoints
+│   │   ├── translations/      # Translation endpoints
+│   │   └── database/          # Database endpoints (NEW!)
 │   ├── components/            # React components
 │   │   ├── Navbar.tsx         # Dashboard navbar
 │   │   ├── LandingNavbar.tsx  # Landing navbar
-│   │   ├── TermsModal.tsx     # T&C modal (NEW!)
+│   │   ├── TermsModal.tsx     # T&C modal
+│   │   ├── UniversalConnectionForm.tsx  # DB connection (NEW!)
+│   │   ├── LockeySyncButton.tsx         # Lockey sync (NEW!)
 │   │   └── ...
 │   ├── lib/                   # Utilities
-│   │   ├── supabase.ts        # Supabase client (NEW!)
-│   │   ├── auth.ts            # Auth functions (NEW!)
-│   │   └── AuthProvider.tsx   # Auth context (NEW!)
+│   │   ├── supabase.ts        # Supabase client
+│   │   ├── auth.ts            # Auth functions
+│   │   ├── AuthProvider.tsx   # Auth context
+│   │   └── backend-api.ts     # Backend API client (NEW!)
 │   ├── types/                 # TypeScript types
 │   ├── dashboard/             # Dashboard page
-│   ├── login/                 # Login page (NEW!)
-│   ├── register/              # Register page (NEW!)
-│   ├── learn-more/            # Learn More page (NEW!)
+│   ├── login/                 # Login page
+│   ├── register/              # Register page
+│   ├── database-connection/   # Database page (NEW!)
+│   ├── learn-more/            # Learn More page
 │   └── page.tsx               # Landing page
-├── middleware.ts              # Route protection (NEW!)
-├── supabase-schema.sql        # Database schema (NEW!)
+├── backend/                   # Express.js Backend (NEW!)
+│   ├── src/
+│   │   ├── config/           # Database config
+│   │   ├── middleware/       # Express middleware
+│   │   ├── routes/           # API routes
+│   │   ├── services/         # Business logic
+│   │   └── server.js         # Main server
+│   ├── .env                  # Backend environment
+│   ├── package.json          # Backend dependencies
+│   └── README.md             # Backend docs
+├── middleware.ts              # Route protection
+├── supabase-schema.sql        # Database schema
 └── ...
 ```
 
@@ -220,6 +283,9 @@ NEXT_PUBLIC_POEDITOR_API_TOKEN=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+
+# Backend (NEW!)
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3001/api
 ```
 
 ## 📊 Database Schema
@@ -271,9 +337,13 @@ SUPABASE_SERVICE_ROLE_KEY=
 - [x] Version control with auto-increment
 - [x] Load previous versions
 - [x] Delete old versions
-- [x] Oracle Database Connection page
+- [x] Express.js Backend with multi-database support
+- [x] Universal Database Connection page
 - [x] SQL Query Editor
-- [x] Import Lockey JSON to Oracle
+- [x] Lockey Sync functionality
+- [x] Import Lockey JSON to Database
+- [x] Download with SQL Query feature
+- [x] Oracle BLOB/CLOB solution documentation
 
 ### In Progress 🚧
 - [ ] Forgot password functionality
@@ -375,8 +445,9 @@ For issues or questions:
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-04-14  
-**Status**: ✅ Ready for Testing
+**Version**: 2.0.0  
+**Last Updated**: 2026-05-05  
+**Status**: ✅ Ready for Production
 
-**🚀 Start here**: [NEXT_STEPS.md](./NEXT_STEPS.md)
+**🚀 Start here**: [NEXT_STEPS.md](./NEXT_STEPS.md)  
+**🔌 Backend setup**: [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md)

@@ -24,3 +24,4 @@ export { default as UniversalConnectionForm } from './UniversalConnectionForm';
 export { default as QueryEditor } from './QueryEditor';
 export { default as ConnectionStatusModal } from './ConnectionStatusModal';
 export { default as DisconnectConfirmModal } from './DisconnectConfirmModal';
+export { default as LockeySyncButton } from './LockeySyncButton';
